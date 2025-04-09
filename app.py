@@ -37,13 +37,20 @@ def listUser():
     else:
         return jsonify({'mensagem':'ERRO! Nenhum usuario cadastrado'}), 404
     
-@app.route('/gym/user/<int:id>', methods=['GET'])
+@app.route('/gym/user/id/<int:id>', methods=['GET'])
 def selectUser(id):
     doc = db.collection('usuarios').document(str(id)).get()
     if doc.exists:
         return jsonify(doc.to_dict()), 200
     else:
         return jsonify({'mensagem': f'Usuário com id {id} não encontrado'}), 404
+
+@app.route('/gym/user/cpf/<cpf>', methods=['GET'])
+def selectCpfUser(cpf):
+    resultado = db.collection('usuarios').where('cpf', '==', cpf).stream()
+    for doc in resultado:
+        return jsonify(doc.to_dict()), 200
+    return jsonify({'mensagem': f'Usuário com CPF {cpf} não encontrado'}), 404
     
 @app.route('/gym', methods=['POST'])
 def createUser():
