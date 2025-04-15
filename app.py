@@ -162,9 +162,7 @@ def deleteUser(id):
 
     if public_id:
         try:
-            public_ids = [public_id]
-            image_delete_result = cloudinary.api.delete_resources(public_ids, resource_type="image", type="upload")
-            return image_delete_result
+            cloudinary.api.delete_resources([public_id], resource_type="image", type="upload")
         except Exception as e:
             print("Erro ao deletar do Cloudinary:", e)
 
