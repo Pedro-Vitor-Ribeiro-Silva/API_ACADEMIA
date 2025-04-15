@@ -5,7 +5,7 @@ from flask_cors import CORS
 from firebase_admin import credentials,firestore
 from dotenv import load_dotenv
 
-load_dotenv(
+load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
@@ -56,16 +56,13 @@ def selectCpfUser(cpf):
 def createUser():
     usuario_dados=request.json
 
-    if 'cpf' not in usuario_dados or 'nome' not in usuario_dados or 'status' not in usuario_dados:
+    if 'cpf' not in usuario_dados or 'nome' not in usuario_dados:
         return jsonify({'mensagem':'ERRO! Campos nome, cpf e status são obrigatórios'}), 400
     
     cpf = str(usuario_dados['cpf'])
 
     if not cpf.isdigit() or len(cpf) != 11:
         return jsonify({'mensagem': 'ERRO! CPF deve conter 11 dígitos numéricos'}), 400
-
-    if not isinstance(usuario_dados['status'], bool):
-        return jsonify({'mensagem': 'ERRO! O campo status deve ser true ou false (booleano)'}), 400
 
     cpf_existente = db.collection('usuarios').where('cpf', '==', cpf).stream()
     if any(cpf_existente): 
@@ -83,7 +80,7 @@ def createUser():
         'id': novo_id,
         'cpf': cpf,
         'nome': usuario_dados['nome'],
-        'status': True
+        'status':True
     })
 
     return jsonify({'mensagem': f'Usuário {usuario_dados["nome"]} cadastrado com sucesso', 'id': novo_id}), 201
@@ -137,4 +134,4 @@ def deleteUser(id):
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0',port=5000)
