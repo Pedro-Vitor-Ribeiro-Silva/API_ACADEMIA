@@ -1,11 +1,28 @@
+from dotenv import load_dotenv
+
+load_dotenv()
+
+import cloudinary
+import cloudinary.uploader
+from cloudinary.uploader import destroy
+
 import os,json
 import firebase_admin
 from flask import Flask,jsonify,request
 from flask_cors import CORS
 from firebase_admin import credentials,firestore
-from dotenv import load_dotenv
 
-load_dotenv()
+
+cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
+api_key = os.getenv("CLOUDINARY_API_KEY")
+api_secret = os.getenv("CLOUDINARY_API_SECRET") 
+
+cloudinary.config(
+    cloud_name=cloud_name,
+    api_key=api_key,
+    api_secret=api_secret
+)
+
 
 app = Flask(__name__)
 CORS(app)
@@ -54,12 +71,12 @@ def selectCpfUser(cpf):
     
 @app.route('/gym', methods=['POST'])
 def createUser():
-    usuario_dados=request.json
+    nome = request.form.get('nome')
+    cpf = request.form.get('cpf')
+    imagem = request.files.get('imagem')
 
-    if 'cpf' not in usuario_dados or 'nome' not in usuario_dados:
-        return jsonify({'mensagem':'ERRO! Campos nome, cpf e status são obrigatórios'}), 400
-    
-    cpf = str(usuario_dados['cpf'])
+    if not nome or not cpf:
+        return jsonify({'mensagem': 'ERRO! Campos nome e cpf são obrigatórios'}), 400
 
     if not cpf.isdigit() or len(cpf) != 11:
         return jsonify({'mensagem': 'ERRO! CPF deve conter 11 dígitos numéricos'}), 400
@@ -68,22 +85,33 @@ def createUser():
     if any(cpf_existente): 
         return jsonify({'mensagem': f'ERRO! Usuário com CPF {cpf} já existe'}), 409
 
+    imagem_url = None
+    public_id = None
+
+    # Upload da imagem
+    if imagem:
+        upload_result = cloudinary.uploader.upload(imagem)
+        print(upload_result['public_id'])
+        imagem_url = upload_result['secure_url']
+        public_id = upload_result['public_id']        
 
     contador_ref = db.collection('controle_id').document('contador')
     contador_doc = contador_ref.get().to_dict()
-    ultimo_id= contador_doc.get('id')
+    ultimo_id = contador_doc.get('id')
     novo_id = int(ultimo_id) + 1
-    contador_ref.update({'id':novo_id})
+    contador_ref.update({'id': novo_id})
 
     doc_ref = db.collection('usuarios').document(str(novo_id))
     doc_ref.set({
         'id': novo_id,
         'cpf': cpf,
-        'nome': usuario_dados['nome'],
-        'status':True
+        'nome': nome,
+        'status': True,
+        'imagem_url': imagem_url,
+        'public_id': public_id
     })
 
-    return jsonify({'mensagem': f'Usuário {usuario_dados["nome"]} cadastrado com sucesso', 'id': novo_id}), 201
+    return jsonify({'mensagem': f'Usuário {nome} cadastrado com sucesso', 'id': novo_id}), 201
 
 
 @app.route('/gym/user/<int:id>', methods=['PUT'])
@@ -129,9 +157,20 @@ def deleteUser(id):
     if not doc.exists:
         return jsonify({'mensagem': 'ERRO! Usuário não encontrado!'}), 404
 
-    doc_ref.delete()
-    return jsonify({'mensagem': 'Usuário excluído com sucesso!'}), 200
+    dados = doc.to_dict()
+    public_id = dados.get('public_id')
 
+    if public_id:
+        try:
+            public_ids = [public_id]
+            image_delete_result = cloudinary.api.delete_resources(public_ids, resource_type="image", type="upload")
+            return image_delete_result
+        except Exception as e:
+            print("Erro ao deletar do Cloudinary:", e)
+
+    doc_ref.delete()
+
+    return jsonify({'mensagem': 'Usuário excluído com sucesso!'}), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0',port=5000)
