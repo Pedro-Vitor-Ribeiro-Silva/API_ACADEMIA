@@ -5,7 +5,7 @@ from flask_cors import CORS
 from firebase_admin import credentials,firestore
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(
 
 app = Flask(__name__)
 CORS(app)
@@ -83,7 +83,7 @@ def createUser():
         'id': novo_id,
         'cpf': cpf,
         'nome': usuario_dados['nome'],
-        'status': usuario_dados['status']
+        'status': True
     })
 
     return jsonify({'mensagem': f'Usuário {usuario_dados["nome"]} cadastrado com sucesso', 'id': novo_id}), 201
