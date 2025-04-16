@@ -20,7 +20,8 @@ api_secret = os.getenv("CLOUDINARY_API_SECRET")
 cloudinary.config(
     cloud_name=cloud_name,
     api_key=api_key,
-    api_secret=api_secret
+    api_secret=api_secret,
+    secure=True,
 )
 
 
@@ -116,19 +117,22 @@ def createUser():
 
 @app.route('/gym/user/<int:id>', methods=['PUT'])
 def editUser(id):
-    usuario_dados = request.json
+    nome = request.form.get('nome')
+    cpf = request.form.get('cpf')
+    status = request.form.get('status')
+    imagem = request.files.get('imagem')
 
-    cpf = str(usuario_dados['cpf'])
+    if not nome or not cpf or status is None:
+        return jsonify({'mensagem': 'ERRO! Campos nome, cpf e status são obrigatórios'}), 400
 
-    if 'cpf' not in usuario_dados or 'nome' not in usuario_dados or 'status' not in usuario_dados:
-        return jsonify({'mensagem':'ERRO! Campos nome, cpf e status são obrigatórios'}), 400
-    
     if not cpf.isdigit() or len(cpf) != 11:
         return jsonify({'mensagem': 'ERRO! CPF deve conter 11 dígitos numéricos'}), 400
-    
-    if not isinstance(usuario_dados['status'], bool):
+
+    if status.lower() not in ['true', 'false']:
         return jsonify({'mensagem': 'ERRO! O campo status deve ser true ou false (booleano)'}), 400
-    
+
+    status_bool = status.lower() == 'true'
+
     usuarios = db.collection('usuarios').where('cpf', '==', cpf).stream()
     for u in usuarios:
         if u.to_dict().get('id') != id:
@@ -137,15 +141,34 @@ def editUser(id):
     doc_ref = db.collection('usuarios').document(str(id))
     doc = doc_ref.get()
 
-    if doc.exists:
-        doc_ref.update({
-            'cpf': usuario_dados['cpf'],
-            'nome': usuario_dados['nome'],
-            'status': usuario_dados['status']
-        })
-        return jsonify({'mensagem':'Usuário atualizado com sucesso!'}), 200
-    else:
-        return jsonify({'mensagem':'ERRO! Usuário não encontrado!'}), 404
+    if not doc.exists:
+        return jsonify({'mensagem': 'ERRO! Usuário não encontrado!'}), 404
+
+    dados_antigos = doc.to_dict()
+
+    imagem_url = dados_antigos.get('imagem_url')
+    public_id = dados_antigos.get('public_id')
+
+    if imagem:
+        if public_id:
+            try:
+                destroy(public_id)
+            except Exception as e:
+                print("Erro ao deletar imagem antiga:", e)
+
+        novo_upload = cloudinary.uploader.upload(imagem)
+        imagem_url = novo_upload['secure_url']
+        public_id = novo_upload['public_id']
+
+    doc_ref.update({
+        'nome': nome,
+        'cpf': cpf,
+        'status': status_bool,
+        'imagem_url': imagem_url,
+        'public_id': public_id
+    })
+
+    return jsonify({'mensagem': 'Usuário atualizado com sucesso!'}), 200
 
 
 
@@ -161,10 +184,7 @@ def deleteUser(id):
     public_id = dados.get('public_id')
 
     if public_id:
-        try:
-            cloudinary.api.delete_resources([public_id], resource_type="image", type="upload")
-        except Exception as e:
-            print("Erro ao deletar do Cloudinary:", e)
+        destroy(public_id)
 
     doc_ref.delete()
 
