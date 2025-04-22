@@ -80,6 +80,7 @@ def selectCpfUser(cpf):
 def createUser():
     nome = request.form.get('nome')
     cpf = request.form.get('cpf')
+    telefone = request.form.get('telefone')
     imagem = request.files.get('imagem')
 
     if not nome or not cpf:
@@ -87,6 +88,9 @@ def createUser():
 
     if not cpf.isdigit() or len(cpf) != 11:
         return jsonify({'mensagem': 'ERRO! CPF deve conter 11 dígitos numéricos'}), 400
+
+    if not telefone or len(telefone) != 15 or not telefone.startswith('(') or not telefone[1:3].isdigit() or not telefone[4:5] == ' ' or not telefone[5:10].isdigit() or not telefone[10:15].isdigit():
+        return jsonify({'mensagem': 'ERRO! Telefone deve estar no formato (XX) XXXXX-XXXX'}), 400
 
     cpf_existente = db.collection('usuarios').where('cpf', '==', cpf).stream()
     if any(cpf_existente): 
@@ -113,6 +117,7 @@ def createUser():
         'id': novo_id,
         'cpf': cpf,
         'nome': nome,
+        'telefone': telefone,
         'status': True,
         'imagem_url': imagem_url,
         'public_id': public_id
@@ -125,13 +130,17 @@ def createUser():
 def editUser(id):
     nome = request.form.get('nome')
     cpf = request.form.get('cpf')
+    telefone = request.form.get('telefone')
     imagem = request.files.get('imagem')
 
     if not nome or not cpf:
-        return jsonify({'mensagem': 'ERRO! Campos nome, cpf e status são obrigatórios'}), 400
+        return jsonify({'mensagem': 'ERRO! Campos nome, cpf e telefone são obrigatórios'}), 400
 
     if not cpf.isdigit() or len(cpf) != 11:
         return jsonify({'mensagem': 'ERRO! CPF deve conter 11 dígitos numéricos'}), 400
+
+    if not telefone or len(telefone) != 15 or not telefone.startswith('(') or not telefone[1:3].isdigit() or not telefone[4:5] == ' ' or not telefone[5:10].isdigit() or not telefone[10:15].isdigit():
+        return jsonify({'mensagem': 'ERRO! Telefone deve estar no formato (XX) XXXXX-XXXX'}), 400
 
     usuarios = db.collection('usuarios').where('cpf', '==', cpf).stream()
     for u in usuarios:
@@ -163,6 +172,7 @@ def editUser(id):
     doc_ref.update({
         'nome': nome,
         'cpf': cpf,
+        'telefone': telefone,
         'imagem_url': imagem_url,
         'public_id': public_id
     })
