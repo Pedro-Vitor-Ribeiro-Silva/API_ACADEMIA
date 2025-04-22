@@ -89,9 +89,6 @@ def createUser():
     if not cpf.isdigit() or len(cpf) != 11:
         return jsonify({'mensagem': 'ERRO! CPF deve conter 11 dígitos numéricos'}), 400
 
-    if not telefone or len(telefone) != 15 or not telefone.startswith('(') or not telefone[1:3].isdigit() or not telefone[4:5] == ' ' or not telefone[5:10].isdigit() or not telefone[10:15].isdigit():
-        return jsonify({'mensagem': 'ERRO! Telefone deve estar no formato (XX) XXXXX-XXXX'}), 400
-
     cpf_existente = db.collection('usuarios').where('cpf', '==', cpf).stream()
     if any(cpf_existente): 
         return jsonify({'mensagem': f'ERRO! Usuário com CPF {cpf} já existe'}), 409
@@ -138,9 +135,6 @@ def editUser(id):
 
     if not cpf.isdigit() or len(cpf) != 11:
         return jsonify({'mensagem': 'ERRO! CPF deve conter 11 dígitos numéricos'}), 400
-
-    if not telefone or len(telefone) != 15 or not telefone.startswith('(') or not telefone[1:3].isdigit() or not telefone[4:5] == ' ' or not telefone[5:10].isdigit() or not telefone[10:15].isdigit():
-        return jsonify({'mensagem': 'ERRO! Telefone deve estar no formato (XX) XXXXX-XXXX'}), 400
 
     usuarios = db.collection('usuarios').where('cpf', '==', cpf).stream()
     for u in usuarios:
