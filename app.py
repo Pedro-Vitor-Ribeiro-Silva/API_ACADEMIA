@@ -83,7 +83,10 @@ def createUser():
     telefone = request.form.get('telefone')
     imagem = request.files.get('imagem')
 
-    telefone = int(telefone)
+    try:
+        telefone = int(telefone)
+    except (TypeError, ValueError):
+        return jsonify({'mensagem': 'ERRO! Telefone inválido'}), 400
 
     if not nome or not cpf:
         return jsonify({'mensagem': 'ERRO! Campos nome e cpf são obrigatórios'}), 400
@@ -101,7 +104,6 @@ def createUser():
     # Upload da imagem
     if imagem:
         upload_result = cloudinary.uploader.upload(imagem)
-        print(upload_result['public_id'])
         imagem_url = upload_result['secure_url']
         public_id = upload_result['public_id']        
 
@@ -132,7 +134,10 @@ def editUser(id):
     telefone = request.form.get('telefone')
     imagem = request.files.get('imagem')
 
-    telefone = int(telefone)
+    try:
+        telefone = int(telefone)
+    except (TypeError, ValueError):
+        return jsonify({'mensagem': 'ERRO! Telefone inválido'}), 400
 
     if not nome or not cpf:
         return jsonify({'mensagem': 'ERRO! Campos nome, cpf e telefone são obrigatórios'}), 400
