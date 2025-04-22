@@ -6,6 +6,8 @@ import cloudinary
 import cloudinary.uploader
 from cloudinary.uploader import destroy
 
+from twilio.rest import Client
+
 import os,json
 import firebase_admin
 from flask import Flask,jsonify,request
@@ -24,6 +26,10 @@ cloudinary.config(
     secure=True,
 )
 
+
+TWILIO_SID = os.getenv("TWILIO_SID")
+TWILIO_TOKEN = os.getenv("TWILIO_TOKEN")
+TWILIO_WHATSAPP_FROM = os.getenv("TWILIO_WHATSAPP_FROM")
 
 app = Flask(__name__)
 CORS(app)
@@ -119,7 +125,6 @@ def createUser():
 def editUser(id):
     nome = request.form.get('nome')
     cpf = request.form.get('cpf')
-    # status = request.form.get('status')
     imagem = request.files.get('imagem')
 
     if not nome or not cpf:
@@ -127,11 +132,6 @@ def editUser(id):
 
     if not cpf.isdigit() or len(cpf) != 11:
         return jsonify({'mensagem': 'ERRO! CPF deve conter 11 dígitos numéricos'}), 400
-
-    # if status.lower() not in ['true', 'false']:
-    #     return jsonify({'mensagem': 'ERRO! O campo status deve ser true ou false (booleano)'}), 400
-
-    # status_bool = status.lower() == 'true'
 
     usuarios = db.collection('usuarios').where('cpf', '==', cpf).stream()
     for u in usuarios:
@@ -165,7 +165,6 @@ def editUser(id):
         'cpf': cpf,
         'imagem_url': imagem_url,
         'public_id': public_id
-        # 'status': status_bool,
     })
 
     return jsonify({'mensagem': 'Usuário atualizado com sucesso!'}), 200
@@ -176,7 +175,6 @@ def updateStatusUser(id):
     dados = request.get_json()
     status = dados.get('status')
     
-
     if status is None:
         return jsonify({'mensagem': 'ERRO! O campo status é obrigatório.'}), 400
     
@@ -189,10 +187,41 @@ def updateStatusUser(id):
     doc = doc_ref.get()
     if not doc.exists:
         return jsonify({'mensagem': 'Usuário não encontrado.'}), 404
+
     doc_ref.update({'status': status_bool})
+
     return jsonify({'mensagem': 'Status atualizado com sucesso.', 'status': status_bool}), 200
 
+
+@app.route('/gym/user/wpp/<int:id>', methods=['GET'])
+def mesageToUserWpp(id):
+    doc_ref = db.collection('usuarios').document(str(id))
+    doc = doc_ref.get()
+    if not doc.exists:
+        return jsonify({'mensagem': 'Usuário não encontrado.'}), 404
     
+    usuario = doc.to_dict()
+    telefone = usuario.get('telefone')
+
+    if telefone:
+        try:
+            client = Client(TWILIO_SID, TWILIO_TOKEN)
+
+            client.messages.create(
+                from_=TWILIO_WHATSAPP_FROM,
+                body="""
+                *Pulse Fit:* Seu cadastro em nossa academia está desativado, entre em contato com a nossa secretaria para regularizar a situação!
+                """,
+                to=f'whatsapp:+55{telefone}'
+            )
+            return jsonify({'mensagem': 'Mensagem enviada com sucesso!'}), 200
+
+        except Exception as e:
+            print("Erro ao enviar mensagem via Twilio:", e)
+            return jsonify({'mensagem': 'Erro ao enviar mensagem, tente novamente.'}), 500
+    
+    return jsonify({'mensagem': 'Telefone não encontrado para este usuário.'}), 400
+
 
 @app.route('/gym/user/<int:id>', methods=['DELETE'])
 def deleteUser(id):
@@ -213,4 +242,4 @@ def deleteUser(id):
     return jsonify({'mensagem': 'Usuário excluído com sucesso!'}), 200
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0',port=5000)
+    app.run()
