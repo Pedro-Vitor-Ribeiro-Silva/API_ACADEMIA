@@ -119,19 +119,19 @@ def createUser():
 def editUser(id):
     nome = request.form.get('nome')
     cpf = request.form.get('cpf')
-    status = request.form.get('status')
+    # status = request.form.get('status')
     imagem = request.files.get('imagem')
 
-    if not nome or not cpf or status is None:
+    if not nome or not cpf:
         return jsonify({'mensagem': 'ERRO! Campos nome, cpf e status são obrigatórios'}), 400
 
     if not cpf.isdigit() or len(cpf) != 11:
         return jsonify({'mensagem': 'ERRO! CPF deve conter 11 dígitos numéricos'}), 400
 
-    if status.lower() not in ['true', 'false']:
-        return jsonify({'mensagem': 'ERRO! O campo status deve ser true ou false (booleano)'}), 400
+    # if status.lower() not in ['true', 'false']:
+    #     return jsonify({'mensagem': 'ERRO! O campo status deve ser true ou false (booleano)'}), 400
 
-    status_bool = status.lower() == 'true'
+    # status_bool = status.lower() == 'true'
 
     usuarios = db.collection('usuarios').where('cpf', '==', cpf).stream()
     for u in usuarios:
@@ -163,14 +163,36 @@ def editUser(id):
     doc_ref.update({
         'nome': nome,
         'cpf': cpf,
-        'status': status_bool,
         'imagem_url': imagem_url,
         'public_id': public_id
+        # 'status': status_bool,
     })
 
     return jsonify({'mensagem': 'Usuário atualizado com sucesso!'}), 200
 
 
+@app.route('/gym/user/<int:id>', methods=['PATCH'])
+def updateStatusUser(id):
+    dados = request.get_json()
+    status = dados.get('status')
+    
+
+    if status is None:
+        return jsonify({'mensagem': 'ERRO! O campo status é obrigatório.'}), 400
+    
+    if status.lower() not in ['true', 'false']: 
+        return jsonify({'mensagem': 'ERRO! O campo status deve ser true ou false (String)'}), 400
+    
+    status_bool = status.lower() == 'true'
+
+    doc_ref = db.collection('usuarios').document(str(id))
+    doc = doc_ref.get()
+    if not doc.exists:
+        return jsonify({'mensagem': 'Usuário não encontrado.'}), 404
+    doc_ref.update({'status': status_bool})
+    return jsonify({'mensagem': 'Status atualizado com sucesso.', 'status': status_bool}), 200
+
+    
 
 @app.route('/gym/user/<int:id>', methods=['DELETE'])
 def deleteUser(id):
