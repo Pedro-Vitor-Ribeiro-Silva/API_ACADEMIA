@@ -83,6 +83,8 @@ def createUser():
     telefone = request.form.get('telefone')
     imagem = request.files.get('imagem')
 
+    telefone = int(telefone)
+
     if not nome or not cpf:
         return jsonify({'mensagem': 'ERRO! Campos nome e cpf são obrigatórios'}), 400
 
@@ -129,6 +131,8 @@ def editUser(id):
     cpf = request.form.get('cpf')
     telefone = request.form.get('telefone')
     imagem = request.files.get('imagem')
+
+    telefone = int(telefone)
 
     if not nome or not cpf:
         return jsonify({'mensagem': 'ERRO! Campos nome, cpf e telefone são obrigatórios'}), 400
